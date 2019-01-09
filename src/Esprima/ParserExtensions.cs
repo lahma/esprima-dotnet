@@ -556,7 +556,7 @@ namespace Esprima
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static char CharCodeAt(this string source, int index)
         {
-            if ((uint) size < (uint) items.Length)
+            if ((uint) index < (uint) source.Length)
             {
                 return source[index];
             }
