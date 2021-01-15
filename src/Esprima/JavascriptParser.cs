@@ -56,8 +56,8 @@ namespace Esprima
 
         private Token _lookahead = null!;
         private readonly Context _context;
-        private readonly Marker _startMarker;
-        private readonly Marker _lastMarker;
+        private Marker _startMarker;
+        private Marker _lastMarker;
         private readonly Scanner _scanner;
         private readonly IErrorHandler _errorHandler;
         private readonly ParserOptions _config;
@@ -124,7 +124,7 @@ namespace Esprima
             {
                 throw new ArgumentNullException(nameof(options));
             }
-            
+
             parseAssignmentExpression = ParseAssignmentExpression;
             parseExponentiationExpression = ParseExponentiationExpression;
             parseUnaryExpression = ParseUnaryExpression;
@@ -147,28 +147,12 @@ namespace Esprima
 
             _context = new Context();
 
-            _startMarker = new Marker
-            {
-                Index = 0,
-                Line = _scanner.LineNumber,
-                Column = 0
-            };
-
-            _lastMarker = new Marker
-            {
-                Index = 0,
-                Line = _scanner.LineNumber,
-                Column = 0
-            };
+            _startMarker = new Marker(0, _scanner.LineNumber, 0);
+            _lastMarker = new Marker(0, _scanner.LineNumber, 0);
 
             NextToken();
 
-            _lastMarker = new Marker
-            {
-                Index = _scanner.Index,
-                Line = _scanner.LineNumber,
-                Column = _scanner.Index - _scanner.LineStart
-            };
+            _lastMarker = new Marker(_scanner);
         }
 
         // https://tc39.github.io/ecma262/#sec-scripts
@@ -276,17 +260,13 @@ namespace Esprima
         {
             var token = _lookahead;
 
-            _lastMarker.Index = _scanner.Index;
-            _lastMarker.Line = _scanner.LineNumber;
-            _lastMarker.Column = _scanner.Index - _scanner.LineStart;
+            _lastMarker = new Marker(_scanner);
 
             CollectComments();
 
             if (_scanner.Index != _startMarker.Index)
             {
-                _startMarker.Index = _scanner.Index;
-                _startMarker.Line = _scanner.LineNumber;
-                _startMarker.Column = _scanner.Index - _scanner.LineStart;
+                _startMarker = new Marker(_scanner);
             }
 
             var next = _scanner.Lex();
@@ -352,7 +332,7 @@ namespace Esprima
             return new Marker(token.Start, line, column);
         }
 
-        private T Finalize<T>(Marker marker, T node) where T : Node
+        private T Finalize<T>(in Marker marker, T node) where T : Node
         {
             node.Range = new Range(marker.Index, _lastMarker.Index);
 
@@ -549,11 +529,8 @@ namespace Esprima
                     ThrowUnexpectedToken(_lookahead);
                 }
 
-                _lastMarker.Index = _startMarker.Index;
-                _lastMarker.Line = _startMarker.Line;
-                _lastMarker.Column = _startMarker.Column;
+                _lastMarker = new Marker(_startMarker);
             }
-
         }
 
         // https://tc39.github.io/ecma262/#sec-primary-expression
@@ -986,7 +963,7 @@ namespace Esprima
 
             return Finalize(node, new Property(kind, key, computed, value, method, shorthand));
         }
-        
+
         private ObjectExpression ParseObjectInitializer()
         {
             var node = CreateNode();
@@ -1218,13 +1195,13 @@ namespace Esprima
                             if (Match(")"))
                             {
                                 NextToken();
-                                for (var i = 0; i < expressions.Count; i++) 
+                                for (var i = 0; i < expressions.Count; i++)
                                 {
                                     ReinterpretExpressionAsPattern(expressions[i]);
                                 }
                                 arrow = true;
                                 expr = new ArrowParameterPlaceHolder(NodeList.From(ref expressions), false);
-                            } 
+                            }
                             else if (Match("..."))
                             {
                                 if (!_context.IsBindingElement)
@@ -1828,7 +1805,7 @@ namespace Esprima
                     allowAndOr = false;
                 }
             }
-            
+
             var token = _lookahead;
             var prec = BinaryPrecedence(token);
             if (prec > 0)
@@ -2184,7 +2161,7 @@ namespace Esprima
             }
 
             _assignmentDepth--;
-            
+
             return expr;
         }
 
@@ -2802,14 +2779,14 @@ namespace Esprima
             ExpectKeyword("for");
             if (MatchContextualKeyword("await"))
             {
-                if (!_context.Await) 
+                if (!_context.Await)
                 {
                     TolerateUnexpectedToken(_lookahead);
                 }
                 _await = true;
                 NextToken();
             }
-            
+
             Expect("(");
 
             if (Match(";"))
@@ -2988,8 +2965,8 @@ namespace Esprima
                 _context.InIteration = previousInIteration;
             }
 
-            return left == null 
-                ? Finalize(node, new ForStatement(init, test, update, body)) 
+            return left == null
+                ? Finalize(node, new ForStatement(init, test, update, body))
                 : forIn
                     ? (Statement) Finalize(node, new ForInStatement(left, right!, body))
                     : Finalize(node, new ForOfStatement(left, right!, body, _await));
@@ -3200,21 +3177,21 @@ namespace Esprima
                 {
                     TolerateUnexpectedToken(_lookahead);
                     body = ParseClassDeclaration();
-                } 
+                }
                 else if (MatchKeyword("function"))
                 {
                     var token = _lookahead;
                     var declaration = ParseFunctionDeclaration();
-                    if (_context.Strict) 
+                    if (_context.Strict)
                     {
                         TolerateUnexpectedToken(token, Messages.StrictFunction);
                     }
-                    else if (declaration.Generator) 
+                    else if (declaration.Generator)
                     {
                         TolerateUnexpectedToken(token, Messages.GeneratorInLegacyContext);
                     }
                     body = (Statement) declaration;
-                } else 
+                } else
                 {
                     body = ParseStatement();
                 }
@@ -3596,7 +3573,7 @@ namespace Esprima
                         break;
                     }
                     Expect(",");
-                    if (Match(")")) 
+                    if (Match(")"))
                     {
                         break;
                     }
@@ -4598,7 +4575,7 @@ namespace Esprima
                     }
                 }
 
-                value = (token.Type == TokenType.Template) 
+                value = (token.Type == TokenType.Template)
                     ? token.RawTemplate!
                     : Convert.ToString(token.Value);
             }
