@@ -19,11 +19,7 @@ namespace Esprima.Benchmark
             {"angular-1.2.5", null}
         };
 
-        private static readonly ParserOptions parserOptions = new ParserOptions()
-        {
-            Comment = true,
-            Tokens = true 
-        };
+        private static readonly ParserOptions parserOptions = new ParserOptions();
 
         [GlobalSetup]
         public void Setup()

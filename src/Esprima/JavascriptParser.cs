@@ -497,6 +497,7 @@ namespace Esprima
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private T InheritCoverGrammar<T>(Func<T> parseFunction) where T : Node
         {
             var previousIsBindingElement = _context.IsBindingElement;
