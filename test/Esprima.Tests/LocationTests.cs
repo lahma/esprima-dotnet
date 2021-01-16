@@ -1,9 +1,8 @@
-﻿using Xunit;
+﻿using System;
+using Xunit;
 
 namespace Esprima.Tests
 {
-    using System;
-
     public class LocationTests
     {
         [Theory]
@@ -31,11 +30,10 @@ namespace Esprima.Tests
         {
             var start = new Position(startLine, startColumn);
             var end = new Position(endLine, endColumn);
-            var e = Assert.Throws<ArgumentOutOfRangeException>(() =>
-                        new Location(start, end));
+            var e = Assert.Throws<ArgumentOutOfRangeException>(() => new Location(start, end));
             Assert.Equal("end", e.ParamName);
             Assert.Equal(end, e.ActualValue);
         }
-#endif        
+#endif
     }
 }

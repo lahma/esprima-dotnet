@@ -546,9 +546,10 @@ namespace Esprima
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string CharToString(char c)
         {
-            if (c >= 0 && c < charToString.Length)
+            var temp = charToString;
+            if ((uint) c < (uint) temp.Length)
             {
-                return charToString[c];
+                return temp[c];
             }
             return c.ToString();
         }

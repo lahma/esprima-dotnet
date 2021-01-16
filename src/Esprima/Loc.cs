@@ -10,11 +10,7 @@ namespace Esprima
         public Position End    { get; }
         public string?  Source { get; }
 
-        public Location(Position start, Position end) : this(start, end, null)
-        {
-        }
-
-        public Location(in Position start, in Position end, string? source)
+        public Location(in Position start, in Position end, string? source = null)
         {
 #if LOCATION_ASSERTS
             if (start == default && end != default
@@ -25,7 +21,7 @@ namespace Esprima
                 EsprimaExceptionHelper.ThrowArgumentOutOfRangeException(nameof(end), end, Exception<ArgumentOutOfRangeException>.DefaultMessage);
             }
 #endif
-            
+
             Start  = start;
             End = end;
             Source = source;

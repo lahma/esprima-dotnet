@@ -70,14 +70,6 @@ namespace Esprima
             "let"
         };
 
-        private static readonly HashSet<string> FutureReservedWords = new HashSet<string>
-        {
-            "enum",
-            "export",
-            "import",
-            "super"
-        };
-
         private static readonly string[] threeCharacterPunctutors =
         {
             "===",
@@ -112,6 +104,8 @@ namespace Esprima
             "=>" ,
             "**"
         };
+
+        private const string oneCharacterPunctuators = "<>=!+-*%&|?^/";
 
         private static int HexValue(char ch)
         {
@@ -206,7 +200,7 @@ namespace Esprima
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsFutureReservedWord(string? id)
         {
-            return id != null && FutureReservedWords.Contains(id);
+            return id =="enum" || id == "export" || id == "import" || id == "super";
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -218,7 +212,7 @@ namespace Esprima
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsRestrictedWord(string? id)
         {
-            return "eval".Equals(id) || "arguments".Equals(id);
+            return id == "eval" || id == "arguments";
         }
 
         // https://tc39.github.io/ecma262/#sec-keywords
@@ -724,17 +718,38 @@ namespace Esprima
 
         public Token ScanPunctuator()
         {
-            static string SafeSubstring(string s, int startIndex, int length)
+            // reduce likelihood to enter punctuator finding loops that are costly
+
+            static bool IsInRange(char c, char min, char max)
+                => (uint) (c - min) <= (uint) (max - min);
+
+            // punctuator chars are spread around ASCII table
+            static bool CanBePunctuator(char c)
+                => c > ' '
+                   && !IsInRange(c, '0', '9')
+                   && !IsInRange(c, 'a', '{')
+                   && !IsInRange(c, 'A', ']')
+                   && !IsInRange(c, '\'', ')');
+
+            static bool TryPunctuatorSubstring(string s, int startIndex, int length, out TextSpan c)
             {
-                return startIndex + length > s.Length ? string.Empty : s.Substring(startIndex, length);
+                if (startIndex + length > s.Length
+                    || !CanBePunctuator(s[startIndex])
+                    || !CanBePunctuator(s[startIndex + length -1]))
+                {
+                    c = TextSpan.Empty;
+                    return false;
+                }
+
+                c = new TextSpan(s, startIndex, length);
+                return true;
             }
 
             var start = Index;
 
             // Check for most common single-character punctuators.
-            // TODO spanify
             var c = Source[Index];
-            var str = c.ToString();
+            var str = new TextSpan(c.ToString());
 
             switch (c)
             {
@@ -753,7 +768,7 @@ namespace Esprima
                     {
                         // Spread operator: ...
                         Index += 2;
-                        str = "...";
+                        str = new TextSpan("...");
                     }
                     break;
 
@@ -778,35 +793,39 @@ namespace Esprima
                 default:
 
                     // 4-character punctuator.
-                    str = SafeSubstring(Source, Index, 4);
-                    if (str == ">>>=")
+                    if (TryPunctuatorSubstring(Source, Index, 4, out str)
+                        // >>>=
+                        && (str[3] == '=' && str[0] == '>' && str[1] == '>' && str[2] == '>'))
                     {
+                        // no allocations as fixed string
+                        str = new TextSpan(">>>=");
                         Index += 4;
                     }
                     else
                     {
-
                         // 3-character punctuators.
-                        str = SafeSubstring(Source, Index, 3);
-                        if (str.Length == 3 && FindThreeCharEqual(str, threeCharacterPunctutors) != null)
+                        if (TryPunctuatorSubstring(Source, Index, 3, out str)
+                            && (str[2] == '=' || str[2] == '>')
+                            && FindThreeCharEqual(str, threeCharacterPunctutors, out str))
                         {
                             Index += 3;
                         }
                         else
                         {
                             // 2-character punctuators.
-                            str = SafeSubstring(Source, Index, 2);
-                            if (str.Length == 2 && FindTwoCharEqual(str, twoCharacterPunctuators) != null)
+                            if (TryPunctuatorSubstring(Source, Index, 2, out str)
+                                && FindTwoCharEqual(str, twoCharacterPunctuators, out str))
                             {
                                 Index += 2;
                             }
                             else
                             {
                                 // 1-character punctuators.
-                                str = Source[Index].ToString();
-                                if ("<>=!+-*%&|?^/".IndexOf(str, StringComparison.Ordinal) >= 0)
+                                var firstChar = Source[Index];
+                                if (oneCharacterPunctuators.IndexOf(firstChar) >= 0)
                                 {
                                     ++Index;
+                                    str = new TextSpan(firstChar.ToString());
                                 }
                             }
                         }
@@ -823,7 +842,7 @@ namespace Esprima
             return new Token
             {
                 Type = TokenType.Punctuator,
-                Value = str,
+                Value = str.ToString(),
                 LineNumber = LineNumber,
                 LineStart = LineStart,
                 Start = start,
@@ -1855,41 +1874,45 @@ namespace Esprima
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string? FindTwoCharEqual(string input, string[] alternatives)
+        private static bool FindTwoCharEqual(in TextSpan input, string[] alternatives, out TextSpan output)
         {
             var c2 = input[1];
             var c1 = input[0];
-            for (int i = 0; i < alternatives.Length; ++i)
+
+            foreach (var s in alternatives)
             {
-                var s = alternatives[i];
-                if (c1 == s[0]
-                    && c2 == s[1])
+                if (c2 == s[1] && c1 == s[0])
                 {
-                    return s;
+                    // reuse existing string so ToString will be without allocations
+                    output = new TextSpan(s);
+                    return true;
                 }
             }
 
-            return null;
+            // don't touch the result
+            output = input;
+            return false;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string? FindThreeCharEqual(string input, string[] alternatives)
+        private static bool FindThreeCharEqual(in TextSpan input, string[] alternatives, out TextSpan output)
         {
             var c3 = input[2];
             var c2 = input[1];
             var c1 = input[0];
-            for (int i = 0; i < alternatives.Length; ++i)
+            foreach (var s in alternatives)
             {
-                var s = alternatives[i];
-                if (c1 == s[0]
-                    && c2 == s[1]
-                    && c3 == s[2])
+                if (c1 == s[0] && c2 == s[1] && c3 == s[2])
                 {
-                    return alternatives[i];
+                    // reuse existing string so ToString will be without allocations
+                    output = new TextSpan(s);
+                    return true;
                 }
             }
 
-            return null;
+            // don't touch the result
+            output = input;
+            return false;
         }
     }
 

@@ -233,9 +233,7 @@ namespace Esprima
 
         private Token ConvertToken(Token token)
         {
-            Token t;
-
-            t = new Token
+            Token t = new Token
             {
                 Type = token.Type,
                 Value = GetTokenRaw(token),
