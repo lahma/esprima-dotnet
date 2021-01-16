@@ -42,7 +42,7 @@ namespace Esprima
                     }
                     if (source[from + 1] == 'n')
                     {
-                        return "in";
+                        return InternedStrings.In;
                     }
                 }
                 if (source[from] == '"' && source[from + 1] == '"')
@@ -57,13 +57,36 @@ namespace Esprima
                 {
                     return "fn";
                 }
-                if (source[from] == 'o' && source[from + 1] == 'n')
+                if (source[from] == 'o')
                 {
-                    return "on";
+                    if (source[from + 1] == 'n')
+                    {
+                        return "on";
+                    }
+                    if (source[from + 1] == 'f')
+                    {
+                        return InternedStrings.Of;
+                    }
                 }
                 if (source[from] == 'd' && source[from + 1] == 'o')
                 {
                     return "do";
+                }
+                if (source[from] == 'a' && source[from + 1] == 's')
+                {
+                    return InternedStrings.As;
+                }
+                if (source[from] == '&' && source[from + 1] == '&')
+                {
+                    return InternedStrings.OperatorDoubleAnd;
+                }
+                if (source[from] == '|' && source[from + 1] == '|')
+                {
+                    return InternedStrings.OperatorDoublePipe;
+                }
+                if (source[from] == '?' && source[from + 1] == '?')
+                {
+                    return InternedStrings.OperatorDoubleQuestion;
                 }
             }
             else if (span == 3)
@@ -158,7 +181,7 @@ namespace Esprima
                     }
                     if (source[from + 1] == 'r' && source[from + 2] == 'u' && source[from + 3] == 'e')
                     {
-                        return "true";
+                        return InternedStrings.True;
                     }
                     if (source[from + 1] == 'h')
                     {
@@ -181,6 +204,16 @@ namespace Esprima
                     if (source[from + 1] == 'a' && source[from + 2] == 'c' && source[from + 3] == 'h')
                     {
                         return "each";
+                    }
+
+                    if (source[from + 1] == 'v' && source[from + 2] == 'a' && source[from + 3] == 'l')
+                    {
+                        return InternedStrings.Eval;
+                    }
+
+                    if (source[from + 1] == 'n' && source[from + 2] == 'u' && source[from + 3] == 'm')
+                    {
+                        return InternedStrings.Enum;
                     }
 
                     if (source[from + 1] == 'l')
@@ -214,7 +247,7 @@ namespace Esprima
                     }
                     if (source[from + 1] == 'r' && source[from + 2] == 'o' && source[from + 3] == 'm')
                     {
-                        return "from";
+                        return InternedStrings.From;
                     }
                 }
                 if (source[from] == 'd')
@@ -263,7 +296,7 @@ namespace Esprima
                 {
                     if (source[from + 1] == 'u' && source[from + 2] == 'l' && source[from + 3] == 'l')
                     {
-                        return "null";
+                        return InternedStrings.Null;
                     }
                     if (source[from + 1] == 'a' && source[from + 2] == 'm' && source[from + 3] == 'e')
                     {
@@ -288,9 +321,20 @@ namespace Esprima
             }
             else if (span == 5)
             {
-                if (source[from] == 'a' && source[from + 1] == 'p' && source[from + 2] == 'p' && source[from + 3] == 'l' && source[from + 4] == 'y')
+                if (source[from] == 'a')
                 {
-                    return "apply";
+                    if (source[from + 1] == 'p' && source[from + 2] == 'p' && source[from + 3] == 'l' && source[from + 4] == 'y')
+                    {
+                        return "apply";
+                    }
+                    if (source[from + 1] == 'w' && source[from + 2] == 'a' && source[from + 3] == 'i' && source[from + 4] == 't')
+                    {
+                        return InternedStrings.Await;
+                    }
+                    if (source[from + 1] == 's' && source[from + 2] == 'y' && source[from + 3] == 'n' && source[from + 4] == 'c')
+                    {
+                        return InternedStrings.Async;
+                    }
                 }
                 if (source[from] == 'b' && source[from + 1] == 'r' && source[from + 2] == 'e' && source[from + 3] == 'a' && source[from + 4] == 'k')
                 {
@@ -302,7 +346,7 @@ namespace Esprima
                 }
                 if (source[from] == 'f' && source[from + 1] == 'a' && source[from + 2] == 'l' && source[from + 3] == 's' && source[from + 4] == 'e')
                 {
-                    return "false";
+                    return InternedStrings.False;
                 }
                 if (source[from] == 'v' && source[from + 1] == 'a' && source[from + 2] == 'l' && source[from + 3] == 'u' && source[from + 4] == 'e')
                 {
@@ -349,6 +393,10 @@ namespace Esprima
                     {
                         return "shift";
                     }
+                    if (source[from + 1] == 'u' && source[from + 2] == 'p' && source[from + 3] == 'e' && source[from + 4] == 'r')
+                    {
+                        return InternedStrings.Super;
+                    }
                 }
                 if (source[from] == 'A' && source[from + 1] == 'r' && source[from + 2] == 'r' && source[from + 3] == 'a' && source[from + 4] == 'y')
                 {
@@ -369,13 +417,24 @@ namespace Esprima
                 {
                     return "concat";
                 }
-                if (source[from] == 'e' && source[from + 1] == 'x' && source[from + 2] == 't' && source[from + 3] == 'e' && source[from + 4] == 'n' && source[from + 5] == 'd')
+                if (source[from] == 'e')
                 {
-                    return "extend";
+                    if (source[from + 1] == 'x' && source[from + 2] == 't' && source[from + 3] == 'e' && source[from + 4] == 'n' && source[from + 5] == 'd')
+                    {
+                        return "extend";
+                    }
+                    if (source[from + 1] == 'x' && source[from + 2] == 'p' && source[from + 3] == 'o' && source[from + 4] == 'r' && source[from + 5] == 't')
+                    {
+                        return InternedStrings.Export;
+                    }
                 }
                 if (source[from] == 'f' && source[from + 1] == 'i' && source[from + 2] == 'l' && source[from + 3] == 't' && source[from + 4] == 'e' && source[from + 5] == 'r')
                 {
                     return "filter";
+                }
+                if (source[from] == 'i' && source[from + 1] == 'm' && source[from + 2] == 'p' && source[from + 3] == 'o' && source[from + 4] == 'r' && source[from + 5] == 't')
+                {
+                    return InternedStrings.Import;
                 }
                 if (source[from] == 'l' && source[from + 1] == 'e' && source[from + 2] == 'n' && source[from + 3] == 'g' && source[from + 4] == 't' && source[from + 5] == 'h')
                 {
@@ -494,10 +553,15 @@ namespace Esprima
             }
             else if (span == 9)
             {
+                if (source[from] == 'a' && source[from + 1] == 'r' && source[from + 2] == 'g' && source[from + 3] == 'u'
+                    && source[from + 4] == 'm' && source[from + 5] == 'e' && source[from + 6] == 'n' && source[from + 7] == 't' && source[from + 8] == 's')
+                {
+                    return InternedStrings.Arguments;
+                }
                 if (source[from] == 'u' && source[from + 1] == 'n' && source[from + 2] == 'd' && source[from + 3] == 'e'
                     && source[from + 4] == 'f' && source[from + 5] == 'i' && source[from + 6] == 'n' && source[from + 7] == 'e' && source[from + 8] == 'd')
                 {
-                    return "undefined";
+                    return InternedStrings.Undefined;
                 }
                 if (source[from] == 'p' && source[from + 1] == 'r' && source[from + 2] == 'o' && source[from + 3] == 't'
                     && source[from + 4] == 'o' && source[from + 5] == 't' && source[from + 6] == 'y' && source[from + 7] == 'p' && source[from + 8] == 'e')
@@ -557,13 +621,13 @@ namespace Esprima
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static char CharCodeAt(this string source, int index)
         {
-            if (index < 0 || index > source.Length - 1)
+            if ((uint) index < (uint) source.Length)
             {
-                // char.MinValue is used as the null value
-                return char.MinValue;
+                return source[index];
             }
 
-            return source[index];
+            // char.MinValue is used as the null value
+            return char.MinValue;
         }
     }
 }

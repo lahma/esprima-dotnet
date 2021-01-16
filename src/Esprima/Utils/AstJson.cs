@@ -848,7 +848,7 @@ namespace Esprima.Utils
                 using (StartNodeObject(callExpression))
                 {
                     Member("callee", callExpression.Callee);
-                    Member("arguments", callExpression.Arguments, e => (Expression) e);
+                    Member("arguments", callExpression.Arguments, e => e);
                 }
             }
 
@@ -893,7 +893,7 @@ namespace Esprima.Utils
             protected override void VisitBlockStatement(BlockStatement blockStatement)
             {
                 using (StartNodeObject(blockStatement))
-                    Member("body", blockStatement.Body, e => (Statement) e);
+                    Member("body", blockStatement.Body, e => e);
             }
         }
     }

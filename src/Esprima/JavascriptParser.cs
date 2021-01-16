@@ -424,7 +424,7 @@ namespace Esprima
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool MatchContextualKeyword(string keyword)
         {
-            return _lookahead.Type == TokenType.Identifier && keyword.Equals(_lookahead.Value);
+            return _lookahead.Type == TokenType.Identifier && ReferenceEquals(keyword, _lookahead.Value);
         }
 
         // Return true if the next token is an assignment operator
@@ -544,7 +544,7 @@ namespace Esprima
             switch (_lookahead.Type)
             {
                 case TokenType.Identifier:
-                    if ((_context.IsModule || _context.Await) && "await".Equals(_lookahead.Value))
+                    if ((_context.IsModule || _context.Await) && ReferenceEquals(InternedStrings.Await, _lookahead.Value))
                     {
                         TolerateUnexpectedToken(_lookahead);
                     }
@@ -582,7 +582,7 @@ namespace Esprima
                     _context.IsBindingElement = false;
                     token = NextToken();
                     raw = GetTokenRaw(token);
-                    expr = Finalize(node, new Literal(("true".Equals(token.Value)), raw));
+                    expr = Finalize(node, new Literal(ReferenceEquals(InternedStrings.True, token.Value), raw));
                     break;
 
                 case TokenType.NullLiteral:
@@ -924,7 +924,7 @@ namespace Esprima
                         {
                             TolerateError(Messages.DuplicateProtoProperty);
                         }
-                        hasProto.Value = "true";
+                        hasProto.Value = InternedStrings.True;
                         hasProto.BooleanValue = true;
                     }
                     NextToken();
@@ -968,7 +968,7 @@ namespace Esprima
 
             var properties = new ArrayList<Expression>();
             var hasProto = RentToken();
-            hasProto.Value = "false";
+            hasProto.Value = InternedStrings.False;
             hasProto.BooleanValue = false;
 
             Expect("{");
@@ -1440,7 +1440,7 @@ namespace Esprima
         private Expression ParseLeftHandSideExpressionAllowCall()
         {
             var startToken = _lookahead;
-            var maybeAsync = MatchContextualKeyword("async");
+            var maybeAsync = MatchContextualKeyword(InternedStrings.Async);
 
             var previousAllowIn = _context.AllowIn;
             _context.AllowIn = true;
@@ -1660,7 +1660,7 @@ namespace Esprima
                 _context.IsBindingElement = false;
 
             }
-            else if (_context.Await && MatchContextualKeyword("await"))
+            else if (_context.Await && MatchContextualKeyword(InternedStrings.Await))
             {
                 expr = ParseAwaitExpression();
             }
@@ -1794,11 +1794,12 @@ namespace Esprima
             var allowNullishCoalescing = true;
             void UpdateNullishCoalescingRestrictions(Token t) {
                 var value = t.Value;
-                if ("&&".Equals(value) || "||".Equals(value))
+                if (ReferenceEquals(InternedStrings.OperatorDoubleAnd, value)
+                    || ReferenceEquals(InternedStrings.OperatorDoublePipe, value))
                 {
                     allowNullishCoalescing = false;
                 }
-                if ("??".Equals(value))
+                if (ReferenceEquals(InternedStrings.OperatorDoubleQuestion, value))
                 {
                     allowAndOr = false;
                 }
@@ -1814,7 +1815,10 @@ namespace Esprima
                 _context.IsAssignmentTarget = false;
                 _context.IsBindingElement = false;
 
-                var markers = new Stack<Token>(new[] { startToken, _lookahead });
+                var markers = new Stack<Token>(2);
+                markers.Push(startToken);
+                markers.Push(_lookahead);
+
                 var left = expr;
                 var right = IsolateCoverGrammar(parseExponentiationExpression);
 
@@ -1828,8 +1832,8 @@ namespace Esprima
                     {
                         break;
                     }
-                    if ((!allowAndOr && ("&&".Equals(_lookahead.Value) || "||".Equals(_lookahead.Value))) ||
-                        (!allowNullishCoalescing && "??".Equals(_lookahead.Value)))
+                    if ((!allowAndOr && (ReferenceEquals(InternedStrings.OperatorDoubleAnd, _lookahead.Value) || ReferenceEquals(InternedStrings.OperatorDoublePipe, _lookahead.Value))) ||
+                        (!allowNullishCoalescing && ReferenceEquals(InternedStrings.OperatorDoubleQuestion, _lookahead.Value)))
                     {
                         ThrowUnexpectedToken(_lookahead);
                     }
@@ -2294,7 +2298,7 @@ namespace Esprima
             Expression? init = null;
             if (kind == VariableDeclarationKind.Const)
             {
-                if (!MatchKeyword("in") && !MatchContextualKeyword("of"))
+                if (!MatchKeyword("in") && !MatchContextualKeyword(InternedStrings.Of))
                 {
                     if (Match("="))
                     {
@@ -2775,7 +2779,7 @@ namespace Esprima
 
             var node = CreateNode();
             ExpectKeyword("for");
-            if (MatchContextualKeyword("await"))
+            if (MatchContextualKeyword(InternedStrings.Await))
             {
                 if (!_context.Await)
                 {
@@ -2817,7 +2821,7 @@ namespace Esprima
                         right = ParseExpression();
                         init = null;
                     }
-                    else if (declarations.Count == 1 && declarations[0]!.Init == null && MatchContextualKeyword("of"))
+                    else if (declarations.Count == 1 && declarations[0]!.Init == null && MatchContextualKeyword(InternedStrings.Of))
                     {
                         left = Finalize(initNode, new VariableDeclaration(declarations, VariableDeclarationKind.Var));
                         NextToken();
@@ -2851,14 +2855,14 @@ namespace Esprima
                         var declarations = ParseBindingList(kind, ref inFor);
                         _context.AllowIn = previousAllowIn;
 
-                        if (declarations.Count == 1 && declarations[0]!.Init == null && MatchKeyword("in"))
+                        if (declarations.Count == 1 && declarations[0]!.Init == null && MatchKeyword(InternedStrings.In))
                         {
                             left = Finalize(initNode, new VariableDeclaration(declarations, kind));
                             NextToken();
                             right = ParseExpression();
                             init = null;
                         }
-                        else if (declarations.Count == 1 && declarations[0]!.Init == null && MatchContextualKeyword("of"))
+                        else if (declarations.Count == 1 && declarations[0]!.Init == null && MatchContextualKeyword(InternedStrings.Of))
                         {
                             left = Finalize(initNode, new VariableDeclaration(declarations, kind));
                             NextToken();
@@ -2898,7 +2902,7 @@ namespace Esprima
                         right = ParseExpression();
                         init = null;
                     }
-                    else if (MatchContextualKeyword("of"))
+                    else if (MatchContextualKeyword(InternedStrings.Of))
                     {
                         if (!_context.IsAssignmentTarget || init.Type == Nodes.AssignmentExpression)
                         {
@@ -3158,7 +3162,7 @@ namespace Esprima
             var expr = ParseExpression();
 
             Statement statement;
-            if ((expr.Type == Nodes.Identifier) && Match(":"))
+            if (expr.Type == Nodes.Identifier && Match(":"))
             {
                 NextToken();
 
@@ -3188,7 +3192,7 @@ namespace Esprima
                     {
                         TolerateUnexpectedToken(token, Messages.GeneratorInLegacyContext);
                     }
-                    body = (Statement) declaration;
+                    body = declaration;
                 } else
                 {
                     body = ParseStatement();
@@ -3357,7 +3361,7 @@ namespace Esprima
                             statement = ParseForStatement();
                             break;
                         case "function":
-                            statement = (Statement) ParseFunctionDeclaration();
+                            statement = ParseFunctionDeclaration();
                             break;
                         case "if":
                             statement = ParseIfStatement();
@@ -3591,7 +3595,7 @@ namespace Esprima
 
         private bool MatchAsyncFunction()
         {
-            var match = MatchContextualKeyword("async");
+            var match = MatchContextualKeyword(InternedStrings.Async);
             if (match)
             {
                 var state = _scanner.SaveState();
@@ -3608,7 +3612,7 @@ namespace Esprima
         private FunctionDeclaration ParseFunctionDeclaration(bool identifierIsOptional = false)
         {
             var node = CreateNode();
-            var isAsync = MatchContextualKeyword("async");
+            var isAsync = MatchContextualKeyword(InternedStrings.Async);
             if (isAsync)
             {
                 NextToken();
@@ -3693,7 +3697,7 @@ namespace Esprima
         {
             var node = CreateNode();
 
-            var isAsync = MatchContextualKeyword("async");
+            var isAsync = MatchContextualKeyword(InternedStrings.Async);
             if (isAsync)
             {
                 NextToken();
@@ -4219,7 +4223,7 @@ namespace Esprima
             {
                 imported = ParseVariableIdentifier();
                 local = imported;
-                if (MatchContextualKeyword("as"))
+                if (MatchContextualKeyword(InternedStrings.As))
                 {
                     NextToken();
                     local = ParseVariableIdentifier();
@@ -4229,7 +4233,7 @@ namespace Esprima
             {
                 imported = ParseIdentifierName();
                 local = imported;
-                if (MatchContextualKeyword("as"))
+                if (MatchContextualKeyword(InternedStrings.As))
                 {
                     NextToken();
                     local = ParseVariableIdentifier();
@@ -4275,7 +4279,7 @@ namespace Esprima
             var node = CreateNode();
 
             Expect("*");
-            if (!MatchContextualKeyword("as"))
+            if (!MatchContextualKeyword(InternedStrings.As))
             {
                 ThrowError(Messages.NoAsAfterImportNamespace);
             }
@@ -4342,7 +4346,7 @@ namespace Esprima
                     ThrowUnexpectedToken(NextToken());
                 }
 
-                if (!MatchContextualKeyword("from"))
+                if (!MatchContextualKeyword(InternedStrings.From))
                 {
                     var message = _lookahead.Value != null ? Messages.UnexpectedToken : Messages.MissingFromClause;
                     ThrowError(message, _lookahead.Value);
@@ -4363,7 +4367,7 @@ namespace Esprima
 
             var local = ParseIdentifierName();
             var exported = local;
-            if (MatchContextualKeyword("as"))
+            if (MatchContextualKeyword(InternedStrings.As))
             {
                 NextToken();
                 exported = ParseIdentifierName();
@@ -4405,7 +4409,7 @@ namespace Esprima
                     //};
                     exportDeclaration = Finalize(node, new ExportDefaultDeclaration(declaration));
                 }
-                else if (MatchContextualKeyword("async"))
+                else if (MatchContextualKeyword(InternedStrings.Async))
                 {
                     // export default async function f () {}
                     // export default async function () {}
@@ -4415,7 +4419,7 @@ namespace Esprima
                 }
                 else
                 {
-                    if (MatchContextualKeyword("from"))
+                    if (MatchContextualKeyword(InternedStrings.From))
                     {
                         ThrowError(Messages.UnexpectedToken, _lookahead.Value);
                     }
@@ -4433,7 +4437,7 @@ namespace Esprima
             {
                 // export * from 'foo';
                 NextToken();
-                if (!MatchContextualKeyword("from"))
+                if (!MatchContextualKeyword(InternedStrings.From))
                 {
                     var message = _lookahead.Value != null ? Messages.UnexpectedToken : Messages.MissingFromClause;
                     ThrowError(message, _lookahead.Value);
@@ -4489,7 +4493,7 @@ namespace Esprima
                 }
                 Expect("}");
 
-                if (MatchContextualKeyword("from"))
+                if (MatchContextualKeyword(InternedStrings.From))
                 {
                     // export {default} from 'foo';
                     // export {foo} from 'foo';

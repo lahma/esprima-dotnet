@@ -302,7 +302,7 @@ namespace Esprima.Utils
         {
             foreach (var statement in program.Body)
             {
-                VisitStatement((Statement)statement);
+                VisitStatement(statement);
             }
         }
 

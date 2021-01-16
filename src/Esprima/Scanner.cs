@@ -198,27 +198,30 @@ namespace Esprima
         // https://tc39.github.io/ecma262/#sec-future-reserved-words
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsFutureReservedWord(string? id)
+        internal static bool IsFutureReservedWord(string? id)
         {
-            return id =="enum" || id == "export" || id == "import" || id == "super";
+            return ReferenceEquals(id, InternedStrings.Enum)
+                   || ReferenceEquals(id, InternedStrings.Export)
+                   || ReferenceEquals(id, InternedStrings.Import)
+                   || ReferenceEquals(id, InternedStrings.Super);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsStrictModeReservedWord(string? id)
+        internal static bool IsStrictModeReservedWord(string? id)
         {
-            return id != null && StrictModeReservedWords.Contains(id);
+            return StrictModeReservedWords.Contains(id!);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsRestrictedWord(string? id)
+        internal static bool IsRestrictedWord(string? id)
         {
-            return id == "eval" || id == "arguments";
+            return ReferenceEquals(id, InternedStrings.Eval) || ReferenceEquals(id, InternedStrings.Arguments);
         }
 
         // https://tc39.github.io/ecma262/#sec-keywords
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool IsKeyword(string id)
+        internal static bool IsKeyword(string id)
         {
             return Keywords.Contains(id);
         }
@@ -537,7 +540,7 @@ namespace Esprima
             return Character.FromCodePoint(code);
         }
 
-        public string GetIdentifier()
+        private IdentifierResult GetIdentifier()
         {
             var start = Index++;
             while (!Eof())
@@ -565,10 +568,10 @@ namespace Esprima
                 }
             }
 
-            return Source.Slice(start, Index);
+            return new IdentifierResult(Source.Slice(start, Index), isComplex: false);
         }
 
-        public string GetComplexIdentifier()
+        private IdentifierResult GetComplexIdentifier()
         {
             var cp = CodePointAt(Index);
             var id = Character.FromCodePoint(cp);
@@ -590,8 +593,7 @@ namespace Esprima
                 }
                 else
                 {
-                    char ch1;
-                    if (!ScanHexEscape('u', out ch1) || ch1 == '\\' || !Character.IsIdentifierStart(ch1))
+                    if (!ScanHexEscape('u', out var ch1) || ch1 == '\\' || !Character.IsIdentifierStart(ch1))
                     {
                         ThrowUnexpectedToken();
                     }
@@ -637,7 +639,19 @@ namespace Esprima
                 }
             }
 
-            return id;
+            return new IdentifierResult(id, isComplex: true);
+        }
+
+        private readonly struct IdentifierResult
+        {
+            public readonly string Value;
+            public readonly bool IsComplex;
+
+            public IdentifierResult(string value, bool isComplex)
+            {
+                Value = value;
+                IsComplex = isComplex;
+            }
         }
 
         public OctalValue OctalToDecimal(char ch)
@@ -666,33 +680,54 @@ namespace Esprima
 
         public Token ScanIdentifier()
         {
-            TokenType type;
+            TokenType type = TokenType.Identifier;
             var start = Index;
 
             // Backslash (U+005C) starts an escaped character.
-            var id = (Source.CharCodeAt(start) == 0x5C) ? GetComplexIdentifier() : GetIdentifier();
+            var identifier = Source.CharCodeAt(start) == 0x5C
+                ? GetComplexIdentifier()
+                : GetIdentifier();
+
+            var id = identifier.Value;
 
             // There is no keyword or literal with only one character.
             // Thus, it must be an identifier.
-            if (id.Length == 1)
+
+            // else
+            if (id.Length > 1)
             {
-                type = TokenType.Identifier;
-            }
-            else if (IsKeyword(id))
-            {
-                type = TokenType.Keyword;
-            }
-            else if ("null".Equals(id))
-            {
-                type = TokenType.NullLiteral;
-            }
-            else if ("true".Equals(id) || "false".Equals(id))
-            {
-                type = TokenType.BooleanLiteral;
-            }
-            else
-            {
-                type = TokenType.Identifier;
+                if (!identifier.IsComplex)
+                {
+                    // reference equality works
+                    if (ReferenceEquals(InternedStrings.Null, id))
+                    {
+                        type = TokenType.NullLiteral;
+                    }
+                    else if (ReferenceEquals(InternedStrings.True, id) || ReferenceEquals(InternedStrings.False, id))
+                    {
+                        type = TokenType.BooleanLiteral;
+                    }
+                    else if (IsKeyword(id))
+                    {
+                        type = TokenType.Keyword;
+                    }
+                }
+                else
+                {
+                    // if it's complex identifier with escapes, we need to do slower string checks
+                    if (id == InternedStrings.Null)
+                    {
+                        type = TokenType.NullLiteral;
+                    }
+                    else if (InternedStrings.True == id || InternedStrings.False == id)
+                    {
+                        type = TokenType.BooleanLiteral;
+                    }
+                    else if (IsKeyword(id))
+                    {
+                        type = TokenType.Keyword;
+                    }
+                }
             }
 
             if (type != TokenType.Identifier && (start + id.Length != Index))
@@ -805,7 +840,6 @@ namespace Esprima
                     {
                         // 3-character punctuators.
                         if (TryPunctuatorSubstring(Source, Index, 3, out str)
-                            && (str[2] == '=' || str[2] == '>')
                             && FindThreeCharEqual(str, threeCharacterPunctutors, out str))
                         {
                             Index += 3;
